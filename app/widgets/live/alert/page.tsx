@@ -5,10 +5,12 @@ import { ElectricBolt } from '@mui/icons-material'
 import { Avatar, Box, Grow, Paper, Typography } from '@mui/material'
 import { NDKTag } from '@nostr-dev-kit/ndk'
 import classNames from 'classnames'
+import _ from 'lodash'
 import numeral from 'numeral'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export interface MessagePayload {
+  id: string
   content: string
   displayName: string
   tags?: NDKTag[]
@@ -22,7 +24,7 @@ export default function Page() {
   const [message, setMessage] = useState<MessagePayload>()
   const [show, setShow] = useState(false)
 
-  const storageHandler = useCallback((ev: StorageEvent) => {
+  const storageHandler = useCallback(async (ev: StorageEvent) => {
     if (ev.key !== 'message-alert') return
     if (!ev.newValue) {
       return setShow(false)

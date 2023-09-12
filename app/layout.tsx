@@ -1,6 +1,5 @@
 import './globals.css'
 import { DefaultTheme } from '@/themes'
-import { NostrContextProvider } from '@/contexts/NostrContext'
 
 export default function RootLayout({
   children,
@@ -10,9 +9,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <DefaultTheme>
-          <NostrContextProvider>{children}</NostrContextProvider>
-        </DefaultTheme>
+        <DefaultTheme>{children}</DefaultTheme>
       </body>
     </html>
   )
