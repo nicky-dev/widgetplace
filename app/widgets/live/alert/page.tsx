@@ -54,7 +54,7 @@ export default function Page() {
       unmountOnExit
       mountOnEnter
     >
-      <Box className="relative grid grid-cols-1">
+      <Box className="absolute bottom-3 left-3 grid grid-cols-1">
         {isZapContent ? (
           <ZapContent message={message} />
         ) : (
