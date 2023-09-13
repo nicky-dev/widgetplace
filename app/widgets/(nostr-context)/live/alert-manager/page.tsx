@@ -30,7 +30,7 @@ export default function Page() {
   const [items, setItems] = useState<NDKEvent[]>([])
   const [selecteds, setSelecteds] = useState<string[]>([])
   const [sub, setSub] = useState<NDKSubscription>()
-  const [started, setStarted] = useState(false)
+  const [started, setStarted] = useState(true)
   const [messages, setMessages] = useState<MessagePayload[]>([])
   const [sliderValue, setSliderValue] = useState(5)
   const [autoPlayDuration, setAutoPlayDuration] = useState(5)
@@ -57,18 +57,16 @@ export default function Page() {
     })
     const authorId = liveEvent.author.hexpubkey()
     const hostId = liveEvent.tagValue('p')
-    return (
-      Array.from(items)
-        // .filter((item) => {
-        //   if (item.kind === NDKKind.Zap) {
-        //     const zapInvoice = zapInvoiceFromEvent(item)
-        //     if (hostId === zapInvoice!.zappee) return true
-        //   } else if (item.pubkey !== hostId && item.pubkey !== authorId) {
-        //     return true
-        //   }
-        // })
-        .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
-    )
+    return Array.from(items)
+      .filter((item) => {
+        if (item.kind === NDKKind.Zap) {
+          const zapInvoice = zapInvoiceFromEvent(item)
+          if (hostId === zapInvoice!.zappee) return true
+        } else if (item.pubkey !== hostId && item.pubkey !== authorId) {
+          return true
+        }
+      })
+      .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
   }, [ndk, liveEvent, liveEventId])
 
   useEffect(() => {
@@ -103,12 +101,12 @@ export default function Page() {
     const hostId = liveEvent.tagValue('p')
     const items = new Set<NDKEvent>(events)
     sub.on('event', (item: NDKEvent) => {
-      // if (item.pubkey === hostId) return
-      // if (item.pubkey === authorId) return
-      // if (item.kind === NDKKind.Zap) {
-      //   const zapInvoice = zapInvoiceFromEvent(item)
-      //   if (hostId === zapInvoice!.zappee) return
-      // }
+      if (item.pubkey === hostId) return
+      if (item.pubkey === authorId) return
+      if (item.kind === NDKKind.Zap) {
+        const zapInvoice = zapInvoiceFromEvent(item)
+        if (hostId === zapInvoice!.zappee) return
+      }
       if (items.has(item)) return
       items.add(item)
       setItems((prev) =>
