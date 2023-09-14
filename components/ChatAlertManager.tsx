@@ -11,7 +11,6 @@ import {
 } from '@nostr-dev-kit/ndk'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import usePromise from 'react-use-promise'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import _ from 'lodash'
 import { useUserStore } from '@/hooks/useUserStore'
 import { ZapItem } from '@/components/ZapItem'
@@ -19,27 +18,29 @@ import { ChatItem } from '@/components/ChatItem'
 import { MessagePayload } from '@/interfaces/MessagePayload'
 
 let timeout: NodeJS.Timeout
-export default function Page() {
+export default function ChatAlertManager({
+  naddr = '',
+  onChange,
+}: {
+  naddr?: string
+  onChange?: (naddr: string) => void
+}) {
   const { ndk } = useContext(NostrContext)
-
-  const router = useRouter()
-  const pathname = usePathname()
-  const searhParams = useSearchParams()
-  const naddr = searhParams.get('naddr')
 
   const [items, setItems] = useState<NDKEvent[]>([])
   const [selecteds, setSelecteds] = useState<string[]>([])
   const [sub, setSub] = useState<NDKSubscription>()
-  const [started, setStarted] = useState(true)
+  const [started, setStarted] = useState(false)
   const [messages, setMessages] = useState<MessagePayload[]>([])
   const [sliderValue, setSliderValue] = useState(5)
   const [autoPlayDuration, setAutoPlayDuration] = useState(5)
   const [startId, setStartId] = useState<string>()
+  const [naddrText, setNaddrText] = useState(naddr)
 
   const [liveEvent, _le, liveEventState] = usePromise(async () => {
-    if (!naddr) return
-    return ndk.fetchEvent(naddr)
-  }, [naddr, ndk])
+    if (!naddrText) return
+    return ndk.fetchEvent(naddrText)
+  }, [naddrText, ndk])
 
   const liveEventId = useMemo(
     () =>
@@ -61,7 +62,7 @@ export default function Page() {
       .filter((item) => {
         if (item.kind === NDKKind.Zap) {
           const zapInvoice = zapInvoiceFromEvent(item)
-          if (hostId === zapInvoice!.zappee) return true
+          if (hostId !== zapInvoice!.zappee) return true
         } else if (item.pubkey !== hostId && item.pubkey !== authorId) {
           return true
         }
@@ -105,7 +106,7 @@ export default function Page() {
       if (item.pubkey === authorId) return
       if (item.kind === NDKKind.Zap) {
         const zapInvoice = zapInvoiceFromEvent(item)
-        if (hostId === zapInvoice!.zappee) return
+        if (hostId !== zapInvoice!.zappee) return
       }
       if (items.has(item)) return
       items.add(item)
@@ -121,12 +122,31 @@ export default function Page() {
     }
   }, [sub, liveEvent, eventState, events])
 
-  const messageAlert = useCallback((payload: MessagePayload) => {
-    localStorage.setItem('message-alert', JSON.stringify(payload))
+  const pushMessage = useCallback((payload: MessagePayload) => {
+    const oldValue = localStorage.getItem('message-alert')
+    const newValue = JSON.stringify(payload)
+    localStorage.setItem('message-alert', newValue)
+    const e = new StorageEvent('storage', {
+      storageArea: window.localStorage,
+      key: 'message-alert',
+      oldValue,
+      newValue: newValue,
+      url: window.location.href,
+    })
+    window.dispatchEvent(e)
   }, [])
 
   const clearMessage = useCallback(() => {
+    const oldValue = localStorage.getItem('message-alert')
     localStorage.removeItem('message-alert')
+    const e = new StorageEvent('storage', {
+      storageArea: window.localStorage,
+      key: 'message-alert',
+      oldValue,
+      newValue: null,
+      url: window.location.href,
+    })
+    window.dispatchEvent(e)
   }, [])
 
   const handleSelect = useCallback(
@@ -135,7 +155,7 @@ export default function Page() {
       setStartId(payload.id)
       setSelecteds((prev) => {
         if (!prev.includes(payload.id)) {
-          messageAlert(payload)
+          pushMessage(payload)
           return [payload.id]
         } else {
           clearMessage()
@@ -143,7 +163,7 @@ export default function Page() {
         }
       })
     },
-    [messageAlert, clearMessage],
+    [pushMessage, clearMessage],
   )
 
   const [users, usersError, usersState] = useUserStore(items)
@@ -212,19 +232,21 @@ export default function Page() {
     if (!started || !messages.length) return
     let index = startId ? messages.findIndex((msg) => msg.id === startId) : 0
     if (!messages[index]) return
-    messageAlert(messages[index])
+    pushMessage(messages[index])
     setSelecteds([messages[index].id])
     timeout = setInterval(() => {
       index += 1
       if (!messages[index]) {
         clearInterval(timeout)
+        clearMessage()
         setStartId(messages[messages.length - 1].id)
+        setSelecteds([])
         return
       }
-      messageAlert(messages[index])
+      pushMessage(messages[index])
       setSelecteds([messages[index].id])
     }, autoPlayDuration * 1000)
-  }, [autoPlayDuration, startId, started, messages, messageAlert])
+  }, [autoPlayDuration, startId, started, messages, pushMessage, clearMessage])
 
   const handleSetAutoplayDuration = useMemo(
     () =>
@@ -241,8 +263,8 @@ export default function Page() {
         onSubmit={(evt) => {
           evt.preventDefault()
           const naddr = evt.currentTarget['naddr'].value
-          if (!naddr) return
-          router.push(`${pathname}?naddr=${naddr}`)
+          setNaddrText(naddr)
+          onChange?.(naddr)
         }}
       >
         <TextField
@@ -252,6 +274,7 @@ export default function Page() {
           placeholder="naddr..."
           margin="dense"
           size="small"
+          autoComplete="off"
         />
         <Box mx={0.5} />
         <Button
