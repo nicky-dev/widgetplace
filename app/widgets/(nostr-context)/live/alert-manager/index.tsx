@@ -11,7 +11,7 @@ import {
 } from '@nostr-dev-kit/ndk'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import usePromise from 'react-use-promise'
-import { MessagePayload } from '@/app/widgets/live/alert/page'
+import { MessagePayload } from '@/app/widgets/live/alert'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import _ from 'lodash'
 import { useUserStore } from '@/hooks/useUserStore'

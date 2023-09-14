@@ -1,4 +1,4 @@
-import { MessagePayload } from '@/app/widgets/live/alert/page'
+import { MessagePayload } from '@/app/widgets/live/alert'
 import { useMessagePayload } from '@/hooks/useMessagePayload'
 import {
   Avatar,
