@@ -1,7 +1,15 @@
 'use client'
 
 import { NostrContext } from '@/contexts/NostrContext'
-import { Box, Button, List, Slider, TextField, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  List,
+  Paper,
+  Slider,
+  TextField,
+  Typography,
+} from '@mui/material'
 import {
   NDKEvent,
   NDKKind,
@@ -166,20 +174,6 @@ export default function ChatAlertManager({
     [queue, items, pushMessage],
   )
 
-  // const pushMessage = useCallback((payload: MessagePayload) => {
-  //   const oldValue = localStorage.getItem('message-alert')
-  //   const newValue = JSON.stringify(payload)
-  //   localStorage.setItem('message-alert', newValue)
-  //   const e = new StorageEvent('storage', {
-  //     storageArea: window.localStorage,
-  //     key: 'message-alert',
-  //     oldValue,
-  //     newValue: newValue,
-  //     url: window.location.href,
-  //   })
-  //   window.dispatchEvent(e)
-  // }, [])
-
   const clearMessage = useCallback(() => {
     setSelected(undefined)
     const oldValue = localStorage.getItem('message-alert')
@@ -194,7 +188,7 @@ export default function ChatAlertManager({
     window.dispatchEvent(e)
   }, [])
 
-  const [users] = useUserStore(items)
+  const users = useUserStore(items)
 
   const handleToggleAutoplay = useCallback(
     (force?: boolean) => {
@@ -279,56 +273,59 @@ export default function ChatAlertManager({
   )
   return (
     <>
-      <Box
-        display="flex"
-        component={'form'}
+      <Paper
+        square
+        component="form"
         onSubmit={(evt) => {
           evt.preventDefault()
           const val = evt.currentTarget['naddr'].value
           onChange?.(val)
           setNaddrText(val)
         }}
+        className="sticky top-0 z-10"
+        elevation={2}
       >
-        <TextField
-          fullWidth
-          defaultValue={naddr}
-          name="naddr"
-          placeholder="naddr..."
-          margin="dense"
-          size="small"
-          autoComplete="off"
-        />
-        <Box mx={0.5} />
-        <Button
-          variant="contained"
-          className="self-center !rounded-3xl !min-w-[128px]"
-          color={started ? 'error' : 'secondary'}
-          disabled={!liveEvent}
-          onClick={() => handleToggleAutoplay()}
-        >
-          {started ? 'Stop' : 'Start Autoplay'}
-        </Button>
-        <Box mx={0.5} />
-      </Box>
-      <Box mx={2} mt={2}>
-        <Box display="flex">
-          <Typography>Alert duration</Typography>
-          <Box flex={1} />
-          <Typography>{sliderValue} seconds</Typography>
-        </Box>
-        <Box mx={2}>
-          <Slider
-            defaultValue={5}
-            max={15}
-            min={3}
-            onChange={(_e, value) => {
-              if (typeof value !== 'number') return
-              setSliderValue(value)
-              handleSetAutoplayDuration(value)
-            }}
+        <Box display="flex" mx={1}>
+          <TextField
+            fullWidth
+            defaultValue={naddr}
+            name="naddr"
+            placeholder="naddr..."
+            margin="dense"
+            size="small"
+            autoComplete="off"
           />
+          <Box mx={0.5} />
+          <Button
+            variant="contained"
+            className="self-center !rounded-3xl !min-w-[128px]"
+            color={started ? 'error' : 'secondary'}
+            disabled={!liveEvent}
+            onClick={() => handleToggleAutoplay()}
+          >
+            {started ? 'Stop' : 'Start Autoplay'}
+          </Button>
         </Box>
-      </Box>
+        <Box mx={2} mt={2}>
+          <Box display="flex">
+            <Typography>Alert duration</Typography>
+            <Box flex={1} />
+            <Typography>{sliderValue} seconds</Typography>
+          </Box>
+          <Box mx={1}>
+            <Slider
+              defaultValue={5}
+              max={15}
+              min={3}
+              onChange={(_e, value) => {
+                if (typeof value !== 'number') return
+                setSliderValue(value)
+                handleSetAutoplayDuration(value)
+              }}
+            />
+          </Box>
+        </Box>
+      </Paper>
       <List>{list}</List>
     </>
   )

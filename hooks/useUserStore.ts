@@ -12,6 +12,7 @@ import usePromise from 'react-use-promise'
 export const useUserStore = (events?: NDKEvent[]) => {
   const { ndk } = useContext(NostrContext)
   const [userIndexes, setUserIndexes] = useState<Record<string, NDKUser>>({})
+  const [userStore, setUserStore] = useState<Record<string, NDKUser>>({})
 
   const initUserStore = useCallback(() => {
     if (!events) return
@@ -31,23 +32,29 @@ export const useUserStore = (events?: NDKEvent[]) => {
     initUserStore()
   }, [initUserStore])
 
-  return usePromise(async () => {
+  const [users, error, state] = usePromise(async () => {
     const keys = Object.keys(userIndexes)
     const values = Object.values(userIndexes)
     if (keys.length === 0) return {}
     const result = await Promise.all(
       keys.map(async (key, i) => {
-        if (values[i]) {
-          return { [key]: values[i] }
+        const user = values[i] || ndk.getUser({ hexpubkey: key })
+        if (!user.profile) {
+          await user.fetchProfile({
+            closeOnEose: true,
+            cacheUsage: NDKSubscriptionCacheUsage.CACHE_FIRST,
+          })
         }
-        const user = ndk.getUser({ hexpubkey: key })
-        await user.fetchProfile({
-          closeOnEose: true,
-          cacheUsage: NDKSubscriptionCacheUsage.CACHE_FIRST,
-        })
         return { [key]: user }
       }),
     )
     return result.reduce((a, b) => ({ ...a, ...b }), {})
   }, [ndk, userIndexes])
+
+  useEffect(() => {
+    if (!users) return
+    setUserStore(users)
+  }, [users])
+
+  return userStore
 }
