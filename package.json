@@ -30,6 +30,7 @@
     "maplibre-gl": "^3.3.1",
     "next": "13.4.19",
     "numeral": "^2.0.6",
+    "p-queue": "^7.4.1",
     "postcss": "8.4.29",
     "react": "18.2.0",
     "react-dom": "18.2.0",

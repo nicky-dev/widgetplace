@@ -7,7 +7,7 @@ import {
   ListItemAvatar,
   ListItemText,
 } from '@mui/material'
-import { NDKEvent, NDKUser } from '@nostr-dev-kit/ndk'
+import { NDKEvent, NDKUser, NostrEvent } from '@nostr-dev-kit/ndk'
 
 export function ChatItem({
   ev,
@@ -18,7 +18,7 @@ export function ChatItem({
   ev: NDKEvent
   user?: NDKUser
   selected?: boolean
-  onClick?: (payload: MessagePayload) => void
+  onClick?: (payload: NDKEvent) => void
 }) {
   const payload = useMessagePayload(ev, user)
 
@@ -40,11 +40,10 @@ export function ChatItem({
       />
       <ListItemAvatar>
         <Button
-          disabled={!user}
           size="small"
           color={selected ? 'error' : 'secondary'}
           variant={selected ? 'contained' : 'outlined'}
-          onClick={() => payload && onClick?.(payload)}
+          onClick={() => onClick?.(ev)}
         >
           {selected ? 'Unselect' : 'Select'}
         </Button>

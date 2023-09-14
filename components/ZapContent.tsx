@@ -1,16 +1,24 @@
-import { MessagePayload } from '@/interfaces/MessagePayload'
 import { ElectricBolt } from '@mui/icons-material'
 import { Avatar, Box, Paper, Typography } from '@mui/material'
-import classNames from 'classnames'
 import numeral from 'numeral'
 import { useMemo } from 'react'
 import Content from './TextNote'
+import { NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk'
+import { useZapInvoice } from '@/hooks/useZapInvoice'
 
-export function ZapContent({ message }: { message?: MessagePayload }) {
+export function ZapContent({
+  ev,
+  profile,
+}: {
+  ev?: NostrEvent
+  profile?: NDKUserProfile
+}) {
+  const zapInvoice = useZapInvoice(ev)
+
   const zapAmount = useMemo(() => {
-    if (!message?.zapAmount) return
-    return numeral((message?.zapAmount || 0) / 1000).format('0,0.[0]a')
-  }, [message?.zapAmount])
+    if (!zapInvoice?.amount) return
+    return numeral((zapInvoice?.amount || 0) / 1000).format('0,0.[0]a')
+  }, [zapInvoice])
 
   return (
     <>
@@ -23,7 +31,7 @@ export function ZapContent({ message }: { message?: MessagePayload }) {
           elevation={4}
         >
           <Avatar
-            src={message?.image}
+            src={profile?.image}
             sx={{
               width: 56,
               height: 56,
@@ -31,13 +39,13 @@ export function ZapContent({ message }: { message?: MessagePayload }) {
               color: 'white',
             }}
           >
-            {message?.displayName.toUpperCase().slice(0, 1)}
+            {profile?.displayName?.slice(0, 1)}
           </Avatar>
           <Typography
             className="text-secondary-light !font-bold max-w-[464px] overflow-hidden text-ellipsis"
             mx={1}
           >
-            {message?.displayName}
+            {profile?.displayName}
           </Typography>
           <ElectricBolt className="text-primary-light" />
           <Typography className="text-primary-light !font-bold">
@@ -48,14 +56,14 @@ export function ZapContent({ message }: { message?: MessagePayload }) {
           </Typography>
         </Paper>
       </Box>
-      {message?.content && (
+      {zapInvoice?.comment && (
         <Box className="flex -mt-1 mx-6 max-h-[6.5rem]">
           <Paper
             className="overflow-hidden !rounded-b-full !rounded-tr-full py-4 px-10"
             variant="elevation"
             elevation={4}
           >
-            <Content content={message?.content} tags={message.tags} />
+            <Content content={zapInvoice?.comment} />
           </Paper>
         </Box>
       )}

@@ -1,26 +1,28 @@
 import _ from 'lodash'
-import { MessagePayload } from '@/interfaces/MessagePayload'
 import { Box, Grow } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ZapContent } from './ZapContent'
 import { ChatContent } from './ChatContent'
+import { NDKKind, NostrEvent } from '@nostr-dev-kit/ndk'
+import { useUserProfile } from '@/hooks/useUserProfile'
 
 let timeoutHandler: NodeJS.Timeout
 
-export default function ChatAlert({ alwaysShow }: { alwaysShow?: boolean }) {
-  const [message, setMessage] = useState<MessagePayload>()
+export default function ChatAlert() {
+  const [ev, setEvent] = useState<NostrEvent>()
   const [show, setShow] = useState(false)
+  const profile = useUserProfile(ev)
 
   const storageHandler = useCallback((ev: StorageEvent) => {
     if (ev.key !== 'message-alert') return
     if (!ev.newValue) {
       return setShow(false)
     }
-    const payload = JSON.parse(ev.newValue) as MessagePayload
+    const payload = JSON.parse(ev.newValue) as NostrEvent
     setShow(false)
     clearTimeout(timeoutHandler)
     timeoutHandler = setTimeout(() => {
-      setMessage(payload)
+      setEvent(payload)
       setShow(true)
     }, 300)
   }, [])
@@ -32,20 +34,20 @@ export default function ChatAlert({ alwaysShow }: { alwaysShow?: boolean }) {
     }
   }, [storageHandler])
 
-  const isZapContent = useMemo(() => !!message?.zapAmount, [message])
+  const isZapContent = useMemo(() => ev?.kind === NDKKind.Zap, [ev])
 
   return (
     <Grow
-      in={alwaysShow || show}
+      in={show && !!profile}
       style={{ transformOrigin: '0 0 0' }}
       mountOnEnter
       unmountOnExit
     >
       <Box className="absolute bottom-0 left-0 mb-3 ml-3 grid grid-cols-1">
         {isZapContent ? (
-          <ZapContent message={message} />
+          <ZapContent ev={ev} profile={profile} />
         ) : (
-          <ChatContent message={message} />
+          <ChatContent ev={ev} profile={profile} />
         )}
       </Box>
     </Grow>

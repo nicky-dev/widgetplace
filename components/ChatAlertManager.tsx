@@ -6,7 +6,6 @@ import {
   NDKEvent,
   NDKKind,
   NDKSubscription,
-  NDKSubscriptionCacheUsage,
   zapInvoiceFromEvent,
 } from '@nostr-dev-kit/ndk'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
@@ -15,7 +14,7 @@ import _ from 'lodash'
 import { useUserStore } from '@/hooks/useUserStore'
 import { ZapItem } from '@/components/ZapItem'
 import { ChatItem } from '@/components/ChatItem'
-import { MessagePayload } from '@/interfaces/MessagePayload'
+import PQueue from 'p-queue'
 
 let timeout: NodeJS.Timeout
 export default function ChatAlertManager({
@@ -28,14 +27,17 @@ export default function ChatAlertManager({
   const { ndk } = useContext(NostrContext)
 
   const [items, setItems] = useState<NDKEvent[]>([])
-  const [selecteds, setSelecteds] = useState<string[]>([])
+  const [selected, setSelected] = useState<string>()
   const [sub, setSub] = useState<NDKSubscription>()
   const [started, setStarted] = useState(false)
-  const [messages, setMessages] = useState<MessagePayload[]>([])
   const [sliderValue, setSliderValue] = useState(5)
   const [autoPlayDuration, setAutoPlayDuration] = useState(5)
-  const [startId, setStartId] = useState<string>()
   const [naddrText, setNaddrText] = useState(naddr)
+
+  const queue = useMemo(
+    () => new PQueue({ concurrency: 1, autoStart: false }),
+    [],
+  )
 
   const [liveEvent, _le, liveEventState] = usePromise(async () => {
     if (!naddrText) return
@@ -63,13 +65,17 @@ export default function ChatAlertManager({
       .filter((item) => {
         if (item.kind === NDKKind.Zap) {
           const zapInvoice = zapInvoiceFromEvent(item)
-          if (hostId !== zapInvoice!.zappee) return true
+          if (hostId !== zapInvoice!.zappee) {
+            return true
+          }
         } else if (item.pubkey !== hostId && item.pubkey !== authorId) {
           return true
         }
       })
       .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
   }, [ndk, liveEvent, liveEventId])
+
+  useEffect(() => {}, [events])
 
   useEffect(() => {
     if (!liveEventId || eventState !== 'resolved') {
@@ -79,7 +85,6 @@ export default function ChatAlertManager({
         return undefined
       })
     }
-    setStartId(events[0]?.id)
     setItems(events)
     const subscribe = ndk.subscribe(
       {
@@ -87,7 +92,7 @@ export default function ChatAlertManager({
         '#a': [liveEventId],
         since: Math.round(Date.now() / 1000),
       },
-      { closeOnEose: false, cacheUsage: NDKSubscriptionCacheUsage.CACHE_FIRST },
+      { closeOnEose: false },
       undefined,
       false,
     )
@@ -97,11 +102,36 @@ export default function ChatAlertManager({
     })
   }, [ndk, eventState, events, liveEventId])
 
+  const pushMessage = useCallback(
+    (ev: NDKEvent) => {
+      setSelected(ev.id)
+      const oldValue = localStorage.getItem('message-alert')
+      const newValue = JSON.stringify(ev.rawEvent())
+      localStorage.setItem('message-alert', newValue)
+      const e = new StorageEvent('storage', {
+        storageArea: window.localStorage,
+        key: 'message-alert',
+        oldValue,
+        newValue: newValue,
+        url: window.location.href,
+      })
+      window.dispatchEvent(e)
+      queue.pause()
+    },
+    [queue],
+  )
+
   useEffect(() => {
     if (!sub || !liveEvent || eventState !== 'resolved') return
     const authorId = liveEvent.author.hexpubkey()
     const hostId = liveEvent.tagValue('p')
     const items = new Set<NDKEvent>(events)
+    queue.addAll(
+      events.map((ev, i, all) => () => {
+        const item = all[all.length - i - 1]
+        pushMessage(item)
+      }),
+    )
     sub.on('event', (item: NDKEvent) => {
       if (item.pubkey === hostId) return
       if (item.pubkey === authorId) return
@@ -111,33 +141,47 @@ export default function ChatAlertManager({
       }
       if (items.has(item)) return
       items.add(item)
-      setItems((prev) =>
-        [...prev, item]
-          .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
-          .slice(0, 10000),
-      )
+      queue.add(() => {
+        pushMessage(item)
+      })
+      setItems((prev) => [item, ...prev].slice(0, 10000))
     })
     sub.start()
     return () => {
       sub.stop()
     }
-  }, [sub, liveEvent, eventState, events])
+  }, [sub, liveEvent, eventState, events, queue, pushMessage])
 
-  const pushMessage = useCallback((payload: MessagePayload) => {
-    const oldValue = localStorage.getItem('message-alert')
-    const newValue = JSON.stringify(payload)
-    localStorage.setItem('message-alert', newValue)
-    const e = new StorageEvent('storage', {
-      storageArea: window.localStorage,
-      key: 'message-alert',
-      oldValue,
-      newValue: newValue,
-      url: window.location.href,
-    })
-    window.dispatchEvent(e)
-  }, [])
+  const initQueue = useCallback(
+    (id: string) => {
+      queue.clear()
+      const reverseItems = items.slice(0).reverse()
+      const index = id ? reverseItems.findIndex((item) => item.id === id) : 0
+      queue.addAll(
+        reverseItems.slice(index).map((ev, i, all) => () => {
+          pushMessage(ev)
+        }),
+      )
+    },
+    [queue, items, pushMessage],
+  )
+
+  // const pushMessage = useCallback((payload: MessagePayload) => {
+  //   const oldValue = localStorage.getItem('message-alert')
+  //   const newValue = JSON.stringify(payload)
+  //   localStorage.setItem('message-alert', newValue)
+  //   const e = new StorageEvent('storage', {
+  //     storageArea: window.localStorage,
+  //     key: 'message-alert',
+  //     oldValue,
+  //     newValue: newValue,
+  //     url: window.location.href,
+  //   })
+  //   window.dispatchEvent(e)
+  // }, [])
 
   const clearMessage = useCallback(() => {
+    setSelected(undefined)
     const oldValue = localStorage.getItem('message-alert')
     localStorage.removeItem('message-alert')
     const e = new StorageEvent('storage', {
@@ -150,35 +194,48 @@ export default function ChatAlertManager({
     window.dispatchEvent(e)
   }, [])
 
-  const handleSelect = useCallback(
-    (payload: MessagePayload) => {
+  const [users] = useUserStore(items)
+
+  const handleToggleAutoplay = useCallback(
+    (force?: boolean) => {
       clearTimeout(timeout)
-      setStartId(payload.id)
-      setSelecteds((prev) => {
-        if (!prev.includes(payload.id)) {
-          pushMessage(payload)
-          return [payload.id]
-        } else {
-          clearMessage()
-          return []
+      setStarted((prev) => {
+        const started = force ?? !prev
+        if (started) {
+          queue.start()
+        } else if (!queue.isPaused) {
+          queue.pause()
         }
+        return started
       })
     },
-    [pushMessage, clearMessage],
+    [queue],
   )
 
-  const [users, usersError, usersState] = useUserStore(items)
+  const handleSelect = useCallback(
+    (ev: NDKEvent) => {
+      clearTimeout(timeout)
+      setStarted(false)
+      if (selected !== ev.id) {
+        pushMessage(ev)
+      } else {
+        clearMessage()
+      }
+      initQueue(ev.id)
+    },
+    [initQueue, selected, pushMessage, clearMessage],
+  )
 
   const list = useMemo(() => {
     return items.map((item, i) => {
-      const selected = selecteds.includes(item.id)
+      const isSelected = selected === item.id
       if (item.kind === 1311) {
         return (
           <ChatItem
             key={item.id}
             ev={item}
             user={users?.[item.pubkey]}
-            selected={selected}
+            selected={isSelected}
             onClick={handleSelect}
           />
         )
@@ -190,64 +247,28 @@ export default function ChatAlertManager({
             key={item.id}
             ev={item}
             user={users?.[pubkey]}
-            selected={selected}
+            selected={isSelected}
             onClick={handleSelect}
           />
         )
       }
     })
-  }, [selecteds, items, users, handleSelect])
+  }, [selected, items, users, handleSelect])
 
   useEffect(() => {
-    if (!started || !items.length || usersState !== 'resolved') return
-    const messages = items.map((_, i, all) => {
-      const ev = all[all.length - i - 1]
-      let user = users[ev.pubkey]
-      if (ev.kind === NDKKind.Zap) {
-        const zapInvoice = zapInvoiceFromEvent(ev)
-        const pubkey = zapInvoice!.zappee
-        user = users[pubkey]
-      }
-      const displayName = user?.profile
-        ? user?.profile?.displayName ||
-          user?.profile?.name ||
-          ev.author.npub.substring(0, 12)
-        : ''
-      const image = user?.profile?.image
-      const zapInvoice =
-        ev.kind === NDKKind.Zap ? zapInvoiceFromEvent(ev) : undefined
-      return {
-        id: ev.id,
-        image,
-        displayName,
-        zapAmount: zapInvoice?.amount,
-        content: zapInvoice?.comment || ev.content,
-        tags: ev.tags,
-      }
+    queue.on('next', () => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        queue.start()
+      }, autoPlayDuration * 1000)
     })
-    setMessages(messages)
-  }, [items, started, users, usersState])
-
-  useEffect(() => {
-    clearInterval(timeout)
-    if (!started || !messages.length) return
-    let index = startId ? messages.findIndex((msg) => msg.id === startId) : 0
-    if (!messages[index]) return
-    pushMessage(messages[index])
-    setSelecteds([messages[index].id])
-    timeout = setInterval(() => {
-      index += 1
-      if (!messages[index]) {
-        clearInterval(timeout)
+    queue.on('empty', () => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
         clearMessage()
-        setStartId(messages[messages.length - 1].id)
-        setSelecteds([])
-        return
-      }
-      pushMessage(messages[index])
-      setSelecteds([messages[index].id])
-    }, autoPlayDuration * 1000)
-  }, [autoPlayDuration, startId, started, messages, pushMessage, clearMessage])
+      }, autoPlayDuration * 1000)
+    })
+  }, [autoPlayDuration, queue, clearMessage])
 
   const handleSetAutoplayDuration = useMemo(
     () =>
@@ -282,12 +303,8 @@ export default function ChatAlertManager({
           variant="contained"
           className="self-center !rounded-3xl !min-w-[128px]"
           color={started ? 'error' : 'secondary'}
-          disabled={!items.length}
-          onClick={() => {
-            setStarted((prev) => {
-              return !prev
-            })
-          }}
+          disabled={!liveEvent}
+          onClick={() => handleToggleAutoplay()}
         >
           {started ? 'Stop' : 'Start Autoplay'}
         </Button>

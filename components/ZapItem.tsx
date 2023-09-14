@@ -10,7 +10,7 @@ import {
   ListItemText,
   Typography,
 } from '@mui/material'
-import { NDKEvent, NDKUser } from '@nostr-dev-kit/ndk'
+import { NDKEvent, NDKUser, NostrEvent } from '@nostr-dev-kit/ndk'
 import numeral from 'numeral'
 
 export function ZapItem({
@@ -22,7 +22,7 @@ export function ZapItem({
   ev: NDKEvent
   user?: NDKUser
   selected?: boolean
-  onClick?: (payload: MessagePayload) => void
+  onClick?: (ev: NDKEvent) => void
 }) {
   const payload = useMessagePayload(ev, user)
 
@@ -52,11 +52,10 @@ export function ZapItem({
       />
       <ListItemAvatar>
         <Button
-          disabled={!user}
           size="small"
           color={selected ? 'error' : 'primary'}
           variant={selected ? 'contained' : 'outlined'}
-          onClick={() => payload && onClick?.(payload)}
+          onClick={() => onClick?.(ev)}
         >
           {selected ? 'Unselect' : 'Select'}
         </Button>
