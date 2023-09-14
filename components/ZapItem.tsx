@@ -1,4 +1,4 @@
-import { MessagePayload } from '@/app/widgets/live/alert'
+import { MessagePayload } from '@/interfaces/MessagePayload'
 import { useMessagePayload } from '@/hooks/useMessagePayload'
 import { ElectricBolt } from '@mui/icons-material'
 import {

@@ -1,22 +1,13 @@
 'use client'
 
 import Content from '@/components/TextNote'
+import { MessagePayload } from '@/interfaces/MessagePayload'
 import { ElectricBolt } from '@mui/icons-material'
 import { Avatar, Box, Grow, Paper, Typography } from '@mui/material'
-import { NDKTag } from '@nostr-dev-kit/ndk'
 import classNames from 'classnames'
 import _ from 'lodash'
 import numeral from 'numeral'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-
-export interface MessagePayload {
-  id: string
-  content: string
-  displayName: string
-  tags?: NDKTag[]
-  zapAmount?: number
-  image?: string
-}
 
 let timeoutHandler: NodeJS.Timeout
 
