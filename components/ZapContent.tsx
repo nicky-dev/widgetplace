@@ -33,7 +33,10 @@ export function ZapContent({ message }: { message?: MessagePayload }) {
           >
             {message?.displayName.toUpperCase().slice(0, 1)}
           </Avatar>
-          <Typography className="text-secondary-light !font-bold" mx={1}>
+          <Typography
+            className="text-secondary-light !font-bold max-w-[464px] overflow-hidden text-ellipsis"
+            mx={1}
+          >
             {message?.displayName}
           </Typography>
           <ElectricBolt className="text-primary-light" />

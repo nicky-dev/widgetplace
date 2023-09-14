@@ -29,7 +29,7 @@ export function ChatItem({
       </ListItemAvatar>
       <ListItemText
         primaryTypographyProps={{
-          className: '!font-bold',
+          className: '!font-bold max-w-[464px] overflow-hidden text-ellipsis',
         }}
         secondaryTypographyProps={{
           className: 'overflow-hidden text-ellipsis',

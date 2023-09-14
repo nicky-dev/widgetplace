@@ -12,7 +12,7 @@ export interface WidgetCardProps {
 export default function WidgetCard(props: WidgetCardProps) {
   const baseUrl = useMemo(() => {
     return typeof location !== 'undefined'
-      ? `${location.protocol}://${location.host}`
+      ? `${location.protocol}//${location.host}`
       : ''
   }, [])
   return (

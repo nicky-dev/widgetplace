@@ -39,7 +39,8 @@ export default function ChatAlertManager({
 
   const [liveEvent, _le, liveEventState] = usePromise(async () => {
     if (!naddrText) return
-    return ndk.fetchEvent(naddrText)
+    const event = await ndk.fetchEvent(naddrText)
+    return event
   }, [naddrText, ndk])
 
   const liveEventId = useMemo(
@@ -113,7 +114,7 @@ export default function ChatAlertManager({
       setItems((prev) =>
         [...prev, item]
           .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
-          .slice(0, 100),
+          .slice(0, 10000),
       )
     })
     sub.start()
@@ -262,9 +263,9 @@ export default function ChatAlertManager({
         component={'form'}
         onSubmit={(evt) => {
           evt.preventDefault()
-          const naddr = evt.currentTarget['naddr'].value
-          setNaddrText(naddr)
-          onChange?.(naddr)
+          const val = evt.currentTarget['naddr'].value
+          onChange?.(val)
+          setNaddrText(val)
         }}
       >
         <TextField
@@ -284,8 +285,6 @@ export default function ChatAlertManager({
           disabled={!items.length}
           onClick={() => {
             setStarted((prev) => {
-              setSelecteds([])
-              clearMessage()
               return !prev
             })
           }}

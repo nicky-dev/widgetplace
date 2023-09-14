@@ -37,7 +37,7 @@ export function ZapItem({
         }}
         primary={
           <>
-            <Typography className="text-secondary-light !font-bold">
+            <Typography className="text-secondary-light !font-bold max-w-[320px] overflow-hidden text-ellipsis">
               {payload?.displayName}
             </Typography>
             <ElectricBolt className="text-primary-light mx-1" />
