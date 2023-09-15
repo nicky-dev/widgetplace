@@ -72,12 +72,13 @@ export default function ChatAlertManager({
     const hostId = liveEvent.tagValue('p')
     return Array.from(items)
       .filter((item) => {
-        if (item.kind === NDKKind.Zap) {
-          const zapInvoice = zapInvoiceFromEvent(item)
-          if (hostId !== zapInvoice!.zappee) {
-            return true
-          }
-        } else if (item.pubkey !== hostId && item.pubkey !== authorId) {
+        // if (item.kind === NDKKind.Zap) {
+        //   const zapInvoice = zapInvoiceFromEvent(item)
+        //   if (hostId !== zapInvoice!.zappee) {
+        //     return true
+        //   }
+        // } else
+        if (item.pubkey !== hostId && item.pubkey !== authorId) {
           return true
         }
       })
@@ -148,15 +149,13 @@ export default function ChatAlertManager({
     sub.on('event', (item: NDKEvent) => {
       if (item.pubkey === hostId) return
       if (item.pubkey === authorId) return
-      if (item.kind === NDKKind.Zap) {
-        const zapInvoice = zapInvoiceFromEvent(item)
-        if (hostId !== zapInvoice!.zappee) return
-      }
+      // if (item.kind === NDKKind.Zap) {
+      //   const zapInvoice = zapInvoiceFromEvent(item)
+      //   if (hostId === zapInvoice!.zappee) return
+      // }
       if (items.has(item)) return
       items.add(item)
-      queue.add(() => {
-        return pushMessage(item)
-      })
+      queue.add(() => pushMessage(item))
       setItems((prev) => [item, ...prev].slice(0, 10000))
     })
     sub.start()
@@ -171,9 +170,7 @@ export default function ChatAlertManager({
       const reverseItems = items.slice(0).reverse()
       const index = id ? reverseItems.findIndex((item) => item.id === id) : 0
       queue.addAll(
-        reverseItems.slice(index).map((ev, i, all) => () => {
-          return pushMessage(ev)
-        }),
+        reverseItems.slice(index).map((ev, i, all) => () => pushMessage(ev)),
       )
     },
     [queue, items, pushMessage],
