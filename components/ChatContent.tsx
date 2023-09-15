@@ -3,10 +3,10 @@ import Content from './TextNote'
 import { NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk'
 
 export function ChatContent({
-  ev,
+  event,
   profile,
 }: {
-  ev?: NostrEvent
+  event?: NostrEvent
   profile?: NDKUserProfile
 }) {
   return (
@@ -36,14 +36,14 @@ export function ChatContent({
           </Typography>
         </Paper>
       </Box>
-      {ev?.content && (
+      {event?.content && (
         <Box className="flex -mt-1 mx-6 max-h-[6.5rem]">
           <Paper
             className="overflow-hidden !rounded-b-full !rounded-tr-full py-4 px-10"
             variant="elevation"
             elevation={4}
           >
-            <Content content={ev?.content} tags={ev.tags} />
+            <Content content={event?.content} tags={event.tags} />
           </Paper>
         </Box>
       )}

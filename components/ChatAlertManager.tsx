@@ -23,6 +23,7 @@ import { useUserStore } from '@/hooks/useUserStore'
 import { ZapItem } from '@/components/ZapItem'
 import { ChatItem } from '@/components/ChatItem'
 import PQueue from 'p-queue'
+import { getUserProfile } from '@/utils/getUserProfile'
 
 let timeout: NodeJS.Timeout
 export default function ChatAlertManager({
@@ -111,10 +112,14 @@ export default function ChatAlertManager({
   }, [ndk, eventState, events, liveEventId])
 
   const pushMessage = useCallback(
-    (ev: NDKEvent) => {
+    async (ev: NDKEvent) => {
       setSelected(ev.id)
+      const user = await getUserProfile(ndk, ev)
+      const newValue = JSON.stringify({
+        event: ev.rawEvent(),
+        profile: user.profile,
+      })
       const oldValue = localStorage.getItem('message-alert')
-      const newValue = JSON.stringify(ev.rawEvent())
       localStorage.setItem('message-alert', newValue)
       const e = new StorageEvent('storage', {
         storageArea: window.localStorage,
@@ -126,7 +131,7 @@ export default function ChatAlertManager({
       window.dispatchEvent(e)
       queue.pause()
     },
-    [queue],
+    [queue, ndk],
   )
 
   useEffect(() => {
@@ -137,7 +142,7 @@ export default function ChatAlertManager({
     queue.addAll(
       events.map((ev, i, all) => () => {
         const item = all[all.length - i - 1]
-        pushMessage(item)
+        return pushMessage(item)
       }),
     )
     sub.on('event', (item: NDKEvent) => {
@@ -150,7 +155,7 @@ export default function ChatAlertManager({
       if (items.has(item)) return
       items.add(item)
       queue.add(() => {
-        pushMessage(item)
+        return pushMessage(item)
       })
       setItems((prev) => [item, ...prev].slice(0, 10000))
     })
@@ -167,7 +172,7 @@ export default function ChatAlertManager({
       const index = id ? reverseItems.findIndex((item) => item.id === id) : 0
       queue.addAll(
         reverseItems.slice(index).map((ev, i, all) => () => {
-          pushMessage(ev)
+          return pushMessage(ev)
         }),
       )
     },

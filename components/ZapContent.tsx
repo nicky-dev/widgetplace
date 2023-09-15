@@ -7,13 +7,13 @@ import { NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk'
 import { useZapInvoice } from '@/hooks/useZapInvoice'
 
 export function ZapContent({
-  ev,
+  event,
   profile,
 }: {
-  ev?: NostrEvent
+  event?: NostrEvent
   profile?: NDKUserProfile
 }) {
-  const zapInvoice = useZapInvoice(ev)
+  const zapInvoice = useZapInvoice(event)
 
   const zapAmount = useMemo(() => {
     if (!zapInvoice?.amount) return
