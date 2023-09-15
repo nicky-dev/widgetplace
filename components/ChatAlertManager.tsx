@@ -282,13 +282,14 @@ export default function ChatAlertManager({
           onChange?.(val)
           setNaddrText(val)
         }}
-        className="sticky top-0 z-10"
+        className="sticky top-0 z-10 pt-4"
         elevation={2}
       >
-        <Box display="flex" mx={1}>
+        <Box display="flex" mx={2.5}>
           <TextField
             fullWidth
             defaultValue={naddr}
+            label="Nostr Address"
             name="naddr"
             placeholder="naddr..."
             margin="dense"
@@ -306,13 +307,13 @@ export default function ChatAlertManager({
             {started ? 'Stop' : 'Start Autoplay'}
           </Button>
         </Box>
-        <Box mx={2} mt={2}>
+        <Box mx={3} mt={2} display="flex" flexDirection="column">
           <Box display="flex">
             <Typography>Alert duration</Typography>
             <Box flex={1} />
             <Typography>{sliderValue} seconds</Typography>
           </Box>
-          <Box mx={1}>
+          <Box>
             <Slider
               defaultValue={5}
               max={15}
