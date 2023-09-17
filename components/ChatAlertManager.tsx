@@ -80,9 +80,14 @@ export default function ChatAlertManager({
 
   const [events, eventError, eventState] = usePromise(async () => {
     if (!liveEvent || !liveEventId) return [] as NDKEvent[]
+    const hostId = liveEvent.tagValue('p') || liveEvent.pubkey
+    const since = Number(liveEvent.tagValue('starts')) || undefined
+    const until = Number(liveEvent.tagValue('ends')) || undefined
     const items = await ndk.fetchEvents({
       kinds: [1311 as NDKKind, NDKKind.Zap],
       '#a': [liveEventId],
+      since,
+      until,
     })
     // const authorId = liveEvent.author.hexpubkey()
     // const hostId = liveEvent.tagValue('p')
@@ -186,7 +191,10 @@ export default function ChatAlertManager({
     (id: string) => {
       queue.clear()
       const reverseItems = items.slice(0).reverse()
-      const index = id ? reverseItems.findIndex((item) => item.id === id) : 0
+      let index = id ? reverseItems.findIndex((item) => item.id === id) : 0
+      if (index < reverseItems.length - 1) {
+        index += 1
+      }
       queue.addAll(
         reverseItems.slice(index).map((ev, i, all) => () => pushMessage(ev)),
       )
@@ -254,18 +262,27 @@ export default function ChatAlertManager({
   }, [selected, items, users, handleSelect])
 
   useEffect(() => {
+    queue.off('next')
+    queue.off('empty')
+
     queue.on('next', () => {
       clearTimeout(timeout)
       timeout = setTimeout(() => {
         queue.start()
       }, autoPlayDuration * 1000)
     })
+
     queue.on('empty', () => {
       clearTimeout(timeout)
       timeout = setTimeout(() => {
         clearMessage()
       }, autoPlayDuration * 1000)
     })
+
+    return () => {
+      queue.off('next')
+      queue.off('empty')
+    }
   }, [autoPlayDuration, queue, clearMessage])
 
   const handleSetAutoplayDuration = useMemo(
