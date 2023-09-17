@@ -115,10 +115,10 @@ export default function ChatAlertManager({
   const pushMessage = useCallback(
     async (ev: NDKEvent) => {
       setSelected(ev.id)
-      const user = await getUserProfile(ndk, ev)
+      const profile = await getUserProfile(ndk, ev)
       const newValue = JSON.stringify({
         event: ev.rawEvent(),
-        profile: user.profile,
+        profile,
       })
       const oldValue = localStorage.getItem('message-alert')
       localStorage.setItem('message-alert', newValue)

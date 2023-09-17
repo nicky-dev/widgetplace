@@ -7,5 +7,12 @@ export const getUserProfile = async (ndk: NDK, ev: NDKEvent) => {
   if (!user.profile) {
     await user.fetchProfile()
   }
-  return user
+  const profile = user.profile
+  const displayName =
+    profile?.displayName || profile?.name || user?.npub.substring(0, 12)
+
+  return {
+    ...user.profile,
+    displayName,
+  }
 }
