@@ -1,4 +1,4 @@
-# Setup Guide in OBS
+# Setup Guide for OBS
 
 ## 1. Create Chat Alert Manager in Custom Browser Docks
 ### 1.1 Open `Custom Browser Docks` in OBS. Go to Menu `Docks > Custom Browser Docks...`
