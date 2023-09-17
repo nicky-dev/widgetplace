@@ -4,4 +4,4 @@
 
 # Documents
 
-- [Setup Guide](../blob/master/docs/setup.md)
+- [Setup Guide](../main/docs/setup.md)
