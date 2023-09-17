@@ -2,6 +2,7 @@
 import { FC, PropsWithChildren, createContext, useMemo } from 'react'
 import NDK from '@nostr-dev-kit/ndk'
 import usePromise from 'react-use-promise'
+import NDKCacheAdapterDexie from '@nostr-dev-kit/ndk-cache-dexie'
 
 interface Nostr {
   ndk: NDK
@@ -9,6 +10,7 @@ interface Nostr {
 }
 
 const ndk = new NDK({
+  cacheAdapter: new NDKCacheAdapterDexie({ dbName: 'widgetplace-ndk-db' }),
   explicitRelayUrls: (process.env.NEXT_PUBLIC_RELAY_URLS || '')
     .split(',')
     .filter((item) => !!item),

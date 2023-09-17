@@ -48,6 +48,22 @@ export default function ChatAlertManager({
     [],
   )
 
+  const handleToggleAutoplay = useCallback(
+    (force?: boolean) => {
+      clearTimeout(timeout)
+      setStarted((prev) => {
+        const started = force ?? !prev
+        if (started) {
+          queue.start()
+        } else if (!queue.isPaused) {
+          queue.pause()
+        }
+        return started
+      })
+    },
+    [queue],
+  )
+
   const [liveEvent, _le, liveEventState] = usePromise(async () => {
     if (!naddrText) return
     const event = await ndk.fetchEvent(naddrText)
@@ -68,27 +84,29 @@ export default function ChatAlertManager({
       kinds: [1311 as NDKKind, NDKKind.Zap],
       '#a': [liveEventId],
     })
-    const authorId = liveEvent.author.hexpubkey()
-    const hostId = liveEvent.tagValue('p')
-    return Array.from(items)
-      .filter((item) => {
-        // if (item.kind === NDKKind.Zap) {
-        //   const zapInvoice = zapInvoiceFromEvent(item)
-        //   if (hostId !== zapInvoice!.zappee) {
+    // const authorId = liveEvent.author.hexpubkey()
+    // const hostId = liveEvent.tagValue('p')
+    return (
+      Array.from(items)
+        // .filter((item) => {
+        //   // if (item.kind === NDKKind.Zap) {
+        //   //   const zapInvoice = zapInvoiceFromEvent(item)
+        //   //   if (hostId !== zapInvoice!.zappee) {
+        //   //     return true
+        //   //   }
+        //   // } else
+        //   if (item.pubkey !== hostId && item.pubkey !== authorId) {
         //     return true
         //   }
-        // } else
-        if (item.pubkey !== hostId && item.pubkey !== authorId) {
-          return true
-        }
-      })
-      .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+        // })
+        .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+    )
   }, [ndk, liveEvent, liveEventId])
-
-  useEffect(() => {}, [events])
 
   useEffect(() => {
     if (!liveEventId || eventState !== 'resolved') {
+      handleToggleAutoplay(false)
+      queue.clear()
       setItems([])
       return setSub((prev) => {
         prev?.stop()
@@ -110,7 +128,7 @@ export default function ChatAlertManager({
       prev?.stop()
       return subscribe
     })
-  }, [ndk, eventState, events, liveEventId])
+  }, [ndk, eventState, events, liveEventId, handleToggleAutoplay, queue])
 
   const pushMessage = useCallback(
     async (ev: NDKEvent) => {
@@ -137,8 +155,8 @@ export default function ChatAlertManager({
 
   useEffect(() => {
     if (!sub || !liveEvent || eventState !== 'resolved') return
-    const authorId = liveEvent.author.hexpubkey()
-    const hostId = liveEvent.tagValue('p')
+    // const authorId = liveEvent.author.hexpubkey()
+    // const hostId = liveEvent.tagValue('p')
     const items = new Set<NDKEvent>(events)
     queue.addAll(
       events.map((ev, i, all) => () => {
@@ -147,12 +165,12 @@ export default function ChatAlertManager({
       }),
     )
     sub.on('event', (item: NDKEvent) => {
-      if (item.pubkey === hostId) return
-      if (item.pubkey === authorId) return
-      // if (item.kind === NDKKind.Zap) {
-      //   const zapInvoice = zapInvoiceFromEvent(item)
-      //   if (hostId === zapInvoice!.zappee) return
-      // }
+      // if (item.pubkey === hostId) return
+      // if (item.pubkey === authorId) return
+      // // if (item.kind === NDKKind.Zap) {
+      // //   const zapInvoice = zapInvoiceFromEvent(item)
+      // //   if (hostId === zapInvoice!.zappee) return
+      // // }
       if (items.has(item)) return
       items.add(item)
       queue.add(() => pushMessage(item))
@@ -192,22 +210,6 @@ export default function ChatAlertManager({
 
   const users = useUserStore(items)
 
-  const handleToggleAutoplay = useCallback(
-    (force?: boolean) => {
-      clearTimeout(timeout)
-      setStarted((prev) => {
-        const started = force ?? !prev
-        if (started) {
-          queue.start()
-        } else if (!queue.isPaused) {
-          queue.pause()
-        }
-        return started
-      })
-    },
-    [queue],
-  )
-
   const handleSelect = useCallback(
     (ev: NDKEvent) => {
       clearTimeout(timeout)
@@ -230,7 +232,7 @@ export default function ChatAlertManager({
           <ChatItem
             key={item.id}
             ev={item}
-            user={users?.[item.pubkey]}
+            profile={users?.[item.pubkey]}
             selected={isSelected}
             onClick={handleSelect}
           />
@@ -242,7 +244,7 @@ export default function ChatAlertManager({
           <ZapItem
             key={item.id}
             ev={item}
-            user={users?.[pubkey]}
+            profile={users?.[pubkey]}
             selected={isSelected}
             onClick={handleSelect}
           />

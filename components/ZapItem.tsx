@@ -1,5 +1,3 @@
-import { MessagePayload } from '@/interfaces/MessagePayload'
-import { useMessagePayload } from '@/hooks/useMessagePayload'
 import { ElectricBolt } from '@mui/icons-material'
 import {
   Avatar,
@@ -10,26 +8,34 @@ import {
   ListItemText,
   Typography,
 } from '@mui/material'
-import { NDKEvent, NDKUser, NostrEvent } from '@nostr-dev-kit/ndk'
+import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk'
 import numeral from 'numeral'
+import { useZapInvoice } from '@/hooks/useZapInvoice'
+import { useMemo } from 'react'
 
 export function ZapItem({
   ev,
-  user,
+  profile,
   selected,
   onClick,
 }: {
   ev: NDKEvent
-  user?: NDKUser
+  profile?: NDKUserProfile
   selected?: boolean
   onClick?: (ev: NDKEvent) => void
 }) {
-  const payload = useMessagePayload(ev, user)
+  const rawEvent = useMemo(() => ev.rawEvent(), [ev])
+  const zapInvoice = useZapInvoice(rawEvent)
+
+  const zapAmount = useMemo(() => {
+    if (!zapInvoice?.amount) return
+    return numeral((zapInvoice?.amount || 0) / 1000).format('0,0.[0]a')
+  }, [zapInvoice])
 
   return (
     <ListItem key={ev.id} dense divider>
       <ListItemAvatar>
-        <Avatar src={payload?.image} />
+        <Avatar src={profile?.image} />
       </ListItemAvatar>
       <ListItemText
         primaryTypographyProps={{
@@ -38,17 +44,17 @@ export function ZapItem({
         primary={
           <>
             <Typography className="text-secondary-light !font-bold max-w-[320px] overflow-hidden text-ellipsis">
-              {payload?.displayName}
+              {profile?.displayName}
             </Typography>
             <ElectricBolt className="text-primary-light mx-1" />
             <Typography className="text-primary-light !font-bold" mx={0.5}>
-              {numeral((payload?.zapAmount || 0) / 1000).format('0,0.[0]a')}
+              {zapAmount}
             </Typography>
             <Box className="mx-1" />
             <Typography>sats</Typography>
           </>
         }
-        secondary={<>{payload?.content}</>}
+        secondary={<>{zapInvoice?.comment}</>}
       />
       <ListItemAvatar>
         <Button

@@ -8,7 +8,7 @@ import {
 } from '@snort/system'
 import { Box, Link, Typography } from '@mui/material'
 import { Fragment } from 'react'
-import { NDKEvent, NDKTag } from '@nostr-dev-kit/ndk'
+import { NDKSubscriptionCacheUsage, NDKTag } from '@nostr-dev-kit/ndk'
 import { NostrContext } from '@/contexts/NostrContext'
 import usePromise from 'react-use-promise'
 import { FormatQuoteOutlined } from '@mui/icons-material'
@@ -26,7 +26,10 @@ const UserMentionLink = ({ id }: { id: string }) => {
       const user = ndk.getUser({
         hexpubkey: id,
       })
-      await user.fetchProfile()
+      await user.fetchProfile({
+        closeOnEose: true,
+        cacheUsage: NDKSubscriptionCacheUsage.CACHE_FIRST,
+      })
       return user
     }
   }, [ndk, id])

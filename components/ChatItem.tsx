@@ -1,5 +1,3 @@
-import { MessagePayload } from '@/interfaces/MessagePayload'
-import { useMessagePayload } from '@/hooks/useMessagePayload'
 import {
   Avatar,
   Button,
@@ -7,25 +5,23 @@ import {
   ListItemAvatar,
   ListItemText,
 } from '@mui/material'
-import { NDKEvent, NDKUser, NostrEvent } from '@nostr-dev-kit/ndk'
+import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk'
 
 export function ChatItem({
   ev,
-  user,
+  profile,
   selected,
   onClick,
 }: {
   ev: NDKEvent
-  user?: NDKUser
+  profile?: NDKUserProfile
   selected?: boolean
   onClick?: (payload: NDKEvent) => void
 }) {
-  const payload = useMessagePayload(ev, user)
-
   return (
     <ListItem key={ev.id} dense divider>
       <ListItemAvatar>
-        <Avatar src={payload?.image} />
+        <Avatar src={profile?.image} />
       </ListItemAvatar>
       <ListItemText
         primaryTypographyProps={{
@@ -35,7 +31,7 @@ export function ChatItem({
           className: 'overflow-hidden text-ellipsis',
         }}
         className="text-secondary-light"
-        primary={payload?.displayName}
+        primary={profile?.displayName}
         secondary={ev.content}
       />
       <ListItemAvatar>

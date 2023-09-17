@@ -4,6 +4,7 @@ import {
   NDKKind,
   NDKSubscriptionCacheUsage,
   NDKUser,
+  NDKUserProfile,
   zapInvoiceFromEvent,
 } from '@nostr-dev-kit/ndk'
 import { useCallback, useContext, useEffect, useState } from 'react'
@@ -11,8 +12,10 @@ import usePromise from 'react-use-promise'
 
 export const useUserStore = (events?: NDKEvent[]) => {
   const { ndk } = useContext(NostrContext)
-  const [userIndexes, setUserIndexes] = useState<Record<string, NDKUser>>({})
-  const [userStore, setUserStore] = useState<Record<string, NDKUser>>({})
+  const [userIndexes, setUserIndexes] = useState<
+    Record<string, NDKUserProfile>
+  >({})
+  const [userStore, setUserStore] = useState<Record<string, NDKUserProfile>>({})
 
   const initUserStore = useCallback(() => {
     if (!events) return
@@ -23,10 +26,14 @@ export const useUserStore = (events?: NDKEvent[]) => {
           const zapInvoice = zapInvoiceFromEvent(b)
           pubkey = zapInvoice!.zappee
         }
-        return { ...a, [pubkey]: prev[pubkey] }
+        if (prev[pubkey]) {
+          return { ...a, ...prev[pubkey] }
+        }
+        const user = ndk.getUser({ hexpubkey: pubkey })
+        return { ...a, [pubkey]: user.npub }
       }, {})
     })
-  }, [events])
+  }, [events, ndk])
 
   useEffect(() => {
     initUserStore()
@@ -38,14 +45,24 @@ export const useUserStore = (events?: NDKEvent[]) => {
     if (keys.length === 0) return {}
     const result = await Promise.all(
       keys.map(async (key, i) => {
-        const user = values[i] || ndk.getUser({ hexpubkey: key })
+        // console.log(key, values[i])
+        // if (values[i]) {
+        //   return { [key]: values[i] }
+        // }
+        const user = ndk.getUser({ hexpubkey: key })
         if (!user.profile) {
           await user.fetchProfile({
             closeOnEose: true,
             cacheUsage: NDKSubscriptionCacheUsage.CACHE_FIRST,
           })
         }
-        return { [key]: user }
+
+        const displayName =
+          user.profile?.displayName ||
+          user.profile?.name ||
+          user?.npub.substring(0, 12)
+
+        return { [key]: { ...user.profile, displayName } as NDKUserProfile }
       }),
     )
     return result.reduce((a, b) => ({ ...a, ...b }), {})
