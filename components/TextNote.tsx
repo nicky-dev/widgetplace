@@ -31,7 +31,10 @@ const UserMentionLink = ({ id }: { id: string }) => {
     }
   }, [ndk, id])
   const displayName = useMemo(
-    () => user?.profile?.displayName || user?.profile?.name || user?.npub,
+    () =>
+      user?.profile?.displayName ||
+      user?.profile?.name ||
+      user?.npub.slice(0, 12),
     [user],
   )
   return (
@@ -149,8 +152,13 @@ const renderChunk = ({ type, content, mimeType }: ParsedFragment) => {
           </Link>
         </NextLink>
       )
-    // case 'custom_emoji':
-    //   return `custom_emoji: ${content}`
+    case 'custom_emoji':
+      return (
+        <img
+          className="inline-block max-h-[1.5em] max-w-[1.5em]"
+          src={content}
+        />
+      )
     // case 'mention':
     //   return `mention: ${content}`
     // case 'invoice':
@@ -175,7 +183,7 @@ const Content = ({
   }, [content, tags])
   return (
     <Typography
-      className="whitespace-break-spaces break-words overflow-hidden max-h-full"
+      className="overflow-hidden max-h-full"
       variant="body1"
       component="div"
     >
