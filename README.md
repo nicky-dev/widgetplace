@@ -4,4 +4,4 @@
 
 # Documents
 
-- [Setup Guide](../main/docs/setup.md)
+- [Setup Guide](../main/docs/setup-obs.md)
