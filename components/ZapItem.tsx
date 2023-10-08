@@ -12,18 +12,18 @@ import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk'
 import numeral from 'numeral'
 import { useZapInvoice } from '@/hooks/useZapInvoice'
 import { useMemo } from 'react'
+import { useUserProfile } from '@/hooks/useUserProfile'
 
 export function ZapItem({
   ev,
-  profile,
   selected,
   onClick,
 }: {
   ev: NDKEvent
-  profile?: NDKUserProfile
   selected?: boolean
   onClick?: (ev: NDKEvent) => void
 }) {
+  const profile = useUserProfile(ev)
   const rawEvent = useMemo(() => ev.rawEvent(), [ev])
   const zapInvoice = useZapInvoice(rawEvent)
 

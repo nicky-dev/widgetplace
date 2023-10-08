@@ -23,6 +23,8 @@ export const useUserStore = (events?: NDKEvent[]) => {
         if (b.kind === NDKKind.Zap) {
           const zapInvoice = zapInvoiceFromEvent(b)
           pubkey = zapInvoice!.zappee
+        } else if (b.kind === 30311) {
+          pubkey = b.tagValue('p') || b.pubkey
         }
         if (prev[pubkey]) {
           return { ...a, [pubkey]: prev[pubkey] }

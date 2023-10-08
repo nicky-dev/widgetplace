@@ -1,3 +1,4 @@
+import { useUserProfile } from '@/hooks/useUserProfile'
 import {
   Avatar,
   Button,
@@ -9,15 +10,14 @@ import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk'
 
 export function ChatItem({
   ev,
-  profile,
   selected,
   onClick,
 }: {
   ev: NDKEvent
-  profile?: NDKUserProfile
   selected?: boolean
   onClick?: (payload: NDKEvent) => void
 }) {
+  const profile = useUserProfile(ev)
   return (
     <ListItem key={ev.id} dense divider>
       <ListItemAvatar>

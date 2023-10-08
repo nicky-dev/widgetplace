@@ -7,13 +7,16 @@ import {
 } from '@nostr-dev-kit/ndk'
 import { useContext, useMemo } from 'react'
 
-export const useZapInvoice = (ev?: NostrEvent) => {
+export const useZapInvoice = (ev?: NDKEvent | NostrEvent) => {
   const { ndk } = useContext(NostrContext)
-  return useMemo(
+
+  const zapInvoice = useMemo(
     () =>
-      ev?.kind === NDKKind.Zap
-        ? zapInvoiceFromEvent(new NDKEvent(ndk, ev))
-        : undefined,
-    [ndk, ev],
+      zapInvoiceFromEvent(ev instanceof NDKEvent ? ev : new NDKEvent(ndk, ev)),
+    [ev, ndk],
+  )
+  return useMemo(
+    () => (ev?.kind === NDKKind.Zap ? zapInvoice : undefined),
+    [ev, zapInvoice],
   )
 }

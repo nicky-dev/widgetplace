@@ -10,20 +10,23 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { NDKEvent, NDKFilter, NDKKind } from '@nostr-dev-kit/ndk'
 import {
-  NDKEvent,
-  NDKKind,
-  NDKSubscription,
-  zapInvoiceFromEvent,
-} from '@nostr-dev-kit/ndk'
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import usePromise from 'react-use-promise'
 import _ from 'lodash'
-import { useUserStore } from '@/hooks/useUserStore'
 import { ZapItem } from '@/components/ZapItem'
 import { ChatItem } from '@/components/ChatItem'
 import PQueue from 'p-queue'
 import { getUserProfile } from '@/utils/getUserProfile'
+import { useSubscribe } from '@/hooks/useSubscribe'
+import { ViewportList } from 'react-viewport-list'
 
 let timeout: NodeJS.Timeout
 export default function ChatAlertManager({
@@ -35,9 +38,9 @@ export default function ChatAlertManager({
 }) {
   const { ndk } = useContext(NostrContext)
 
-  const [items, setItems] = useState<NDKEvent[]>([])
+  // const [items, setItems] = useState<NDKEvent[]>([])
   const [selected, setSelected] = useState<string>()
-  const [sub, setSub] = useState<NDKSubscription>()
+  // const [sub, setSub] = useState<NDKSubscription>()
   const [started, setStarted] = useState(false)
   const [sliderValue, setSliderValue] = useState(5)
   const [autoPlayDuration, setAutoPlayDuration] = useState(5)
@@ -78,62 +81,18 @@ export default function ChatAlertManager({
     [liveEvent],
   )
 
-  const [events, eventError, eventState] = usePromise(async () => {
-    if (!liveEvent || !liveEventId) return [] as NDKEvent[]
-    const hostId = liveEvent.tagValue('p') || liveEvent.pubkey
+  const filter = useMemo(() => {
+    if (!liveEvent || !liveEventId) return
     const since = Number(liveEvent.tagValue('starts')) || undefined
     const until = Number(liveEvent.tagValue('ends')) || undefined
-    const items = await ndk.fetchEvents({
+    console.log('since', since, until)
+    return {
       kinds: [1311 as NDKKind, NDKKind.Zap],
       '#a': [liveEventId],
       since,
       until,
-    })
-    // const authorId = liveEvent.author.hexpubkey()
-    // const hostId = liveEvent.tagValue('p')
-    return (
-      Array.from(items)
-        // .filter((item) => {
-        //   // if (item.kind === NDKKind.Zap) {
-        //   //   const zapInvoice = zapInvoiceFromEvent(item)
-        //   //   if (hostId !== zapInvoice!.zappee) {
-        //   //     return true
-        //   //   }
-        //   // } else
-        //   if (item.pubkey !== hostId && item.pubkey !== authorId) {
-        //     return true
-        //   }
-        // })
-        .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
-    )
-  }, [ndk, liveEvent, liveEventId])
-
-  useEffect(() => {
-    if (!liveEventId || eventState !== 'resolved') {
-      handleToggleAutoplay(false)
-      queue.clear()
-      setItems([])
-      return setSub((prev) => {
-        prev?.stop()
-        return undefined
-      })
-    }
-    setItems(events)
-    const subscribe = ndk.subscribe(
-      {
-        kinds: [1311 as NDKKind, NDKKind.Zap],
-        '#a': [liveEventId],
-        since: Math.round(Date.now() / 1000),
-      },
-      { closeOnEose: false },
-      undefined,
-      false,
-    )
-    setSub((prev) => {
-      prev?.stop()
-      return subscribe
-    })
-  }, [ndk, eventState, events, liveEventId, handleToggleAutoplay, queue])
+    } as NDKFilter
+  }, [liveEventId, liveEvent])
 
   const pushMessage = useCallback(
     async (ev: NDKEvent) => {
@@ -158,34 +117,28 @@ export default function ChatAlertManager({
     [queue, ndk],
   )
 
-  useEffect(() => {
-    if (!sub || !liveEvent || eventState !== 'resolved') return
-    // const authorId = liveEvent.author.hexpubkey()
-    // const hostId = liveEvent.tagValue('p')
-    const items = new Set<NDKEvent>(events)
-    queue.addAll(
-      events.map((ev, i, all) => () => {
-        const item = all[all.length - i - 1]
-        return pushMessage(item)
-      }),
-    )
-    sub.on('event', (item: NDKEvent) => {
-      // if (item.pubkey === hostId) return
-      // if (item.pubkey === authorId) return
-      // // if (item.kind === NDKKind.Zap) {
-      // //   const zapInvoice = zapInvoiceFromEvent(item)
-      // //   if (hostId === zapInvoice!.zappee) return
-      // // }
-      if (items.has(item)) return
-      items.add(item)
-      queue.add(() => pushMessage(item))
-      setItems((prev) => [item, ...prev].slice(0, 10000))
-    })
-    sub.start()
-    return () => {
-      sub.stop()
-    }
-  }, [sub, liveEvent, eventState, events, queue, pushMessage])
+  const onStart = useCallback(
+    (events: NDKEvent[]) => {
+      queue.addAll(
+        events.map((ev, i, all) => () => {
+          const item = all[all.length - i - 1]
+          return pushMessage(item)
+        }),
+      )
+    },
+    [queue, pushMessage],
+  )
+
+  const onEvent = useCallback(
+    (event: NDKEvent) => queue.add(() => pushMessage(event)),
+    [queue, pushMessage],
+  )
+
+  const [items] = useSubscribe(filter, {
+    disabled: !filter,
+    onStart,
+    onEvent,
+  })
 
   const initQueue = useCallback(
     (id: string) => {
@@ -216,8 +169,6 @@ export default function ChatAlertManager({
     window.dispatchEvent(e)
   }, [])
 
-  const users = useUserStore(items)
-
   const handleSelect = useCallback(
     (ev: NDKEvent) => {
       clearTimeout(timeout)
@@ -232,34 +183,31 @@ export default function ChatAlertManager({
     [initQueue, selected, pushMessage, clearMessage],
   )
 
-  const list = useMemo(() => {
-    return items.map((item, i) => {
+  const renderListItem = useCallback(
+    (item: NDKEvent) => {
       const isSelected = selected === item.id
       if (item.kind === 1311) {
         return (
           <ChatItem
             key={item.id}
             ev={item}
-            profile={users?.[item.pubkey]}
             selected={isSelected}
             onClick={handleSelect}
           />
         )
       } else if (item.kind === NDKKind.Zap) {
-        const zapInvoice = zapInvoiceFromEvent(item)
-        const pubkey = zapInvoice!.zappee
         return (
           <ZapItem
             key={item.id}
             ev={item}
-            profile={users?.[pubkey]}
             selected={isSelected}
             onClick={handleSelect}
           />
         )
       }
-    })
-  }, [selected, items, users, handleSelect])
+    },
+    [selected, handleSelect],
+  )
 
   useEffect(() => {
     queue.off('next')
@@ -292,6 +240,8 @@ export default function ChatAlertManager({
       }, 300),
     [],
   )
+  const ref = useRef<HTMLUListElement | null>(null)
+
   return (
     <>
       <Paper
@@ -348,7 +298,13 @@ export default function ChatAlertManager({
           </Box>
         </Box>
       </Paper>
-      <List>{list}</List>
+      {!!items.length && (
+        <List ref={ref} className="overflow-auto">
+          <ViewportList viewportRef={ref} items={items}>
+            {renderListItem}
+          </ViewportList>
+        </List>
+      )}
     </>
   )
 }

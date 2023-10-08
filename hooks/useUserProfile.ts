@@ -1,17 +1,17 @@
 import { NostrContext } from '@/contexts/NostrContext'
 import {
   NDKEvent,
-  NDKKind,
   NDKSubscriptionCacheUsage,
+  NDKUser,
   NDKUserProfile,
   NostrEvent,
-  zapInvoiceFromEvent,
 } from '@nostr-dev-kit/ndk'
 import { useContext, useMemo } from 'react'
 import usePromise from 'react-use-promise'
 import { useZapInvoice } from './useZapInvoice'
 
-export const useUserProfile = (ev?: NostrEvent) => {
+const users: Record<string, NDKUser> = {}
+export const useUserProfile = (ev?: NDKEvent | NostrEvent) => {
   const { ndk } = useContext(NostrContext)
   const zapInvoice = useZapInvoice(ev)
 
@@ -24,11 +24,17 @@ export const useUserProfile = (ev?: NostrEvent) => {
   )
   const [profile] = usePromise(async () => {
     if (!ev || !user) return
-    await user.fetchProfile({
+    if (!users[user.npub]) {
+      users[user.npub] = user
+    }
+    if (users[user.npub].profile?.name) {
+      return users[user.npub].profile
+    }
+    await users[user.npub].fetchProfile({
       closeOnEose: true,
       cacheUsage: NDKSubscriptionCacheUsage.CACHE_FIRST,
     })
-    return user.profile
+    return users[user.npub].profile
   }, [ev, zapInvoice, user])
 
   return useMemo(() => {

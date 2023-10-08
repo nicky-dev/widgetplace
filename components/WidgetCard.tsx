@@ -26,8 +26,10 @@ export default function WidgetCard(props: WidgetCardProps) {
       <Box
         minHeight={480}
         maxHeight={480}
-        position={'relative'}
-        overflow={'auto'}
+        position="relative"
+        overflow="auto"
+        display="flex"
+        flexDirection="column"
       >
         {props.children}
       </Box>
